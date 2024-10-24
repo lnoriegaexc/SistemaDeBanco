@@ -6,7 +6,7 @@ public class Conexion {
     private final String driver="com.mysql.cj.jdbc.Driver";
     private final String database="banco";
     private final String hostname="localhost";
-    private final String port="3306";
+    private final String port="3308";
     private final String username="root";
     private final String password="root";
     private final String url="jdbc:mysql://"+hostname+":"+port+"/"+database+"?useSSL=false";

@@ -20,10 +20,12 @@ public class ServidorTCP {
                 // Crear los streams
                 DataInputStream in = new DataInputStream(sock.getInputStream());
                 DataOutputStream out = new DataOutputStream(sock.getOutputStream());
-                 String nombreCliente = in.readUTF();
+                 String  nombreCliente = in.readUTF(); 
+              
+        String[] nombreClienteArray = nombreCliente.split(",");
                 System.out.println("Nombre del cliente: " + nombreCliente);
                 // Crear y empezar el hilo, pasando el socket
-                ServidorHilo hilo = new ServidorHilo(sock, in, out,nombreCliente); // Inicialmente con nombre vacío
+                ServidorHilo hilo = new ServidorHilo(sock, in, out,nombreClienteArray); // Inicialmente con nombre vacío
                 hilo.start();
             }
         } catch (IOException e) {

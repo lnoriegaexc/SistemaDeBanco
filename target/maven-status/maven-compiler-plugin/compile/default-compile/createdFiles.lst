@@ -1,6 +1,5 @@
 DAO\clienteDAO.class
 DAO\movimientoDAO.class
-com\sistemabancario\ClienteTCP.class
 MySQL\MySQLCliente.class
 MySQL\MySQLCuenta.class
 Modelo\Movimiento.class
@@ -11,5 +10,4 @@ Modelo\Cuenta.class
 com\sistemabancario\ServidorHilo.class
 com\sistemabancario\ServidorTCP.class
 Modelo\Cliente.class
-com\sistemabancario\ClienteHilo.class
 DAO\DAO.class

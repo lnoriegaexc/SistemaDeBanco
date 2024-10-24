@@ -11,256 +11,131 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class ServidorHilo extends Thread {
-
+    
     private DataInputStream in;
     private DataOutputStream out;
-    private String nombreCliente;
+    private String[] nombreCliente;
     private Socket socket;
-
-    public ServidorHilo(Socket socket, DataInputStream in, DataOutputStream out, String nombreCliente) {
+    
+    public ServidorHilo(Socket socket, DataInputStream in, DataOutputStream out, String[] nombreCliente) {
         this.socket = socket;
         this.in = in;
         this.out = out;
         this.nombreCliente = nombreCliente;
     }
-
-    public void CajeroAutomatico() {
+    
+ 
+    public void Transferencia() {
+//                         out.writeUTF("Transferencia,"+idCuenta+","+montoTrnasferencia+","+idDestino);
         try {
-            out.writeUTF("Ingrese numero de cuenta de Cajero:");
-            nombreCliente = in.readUTF();
-            Cliente cliente = traerCuenta(Integer.parseInt(nombreCliente));
-            // Obtener el saldo inicial de la cuenta
-            float fondosCuenta = consultarCuenta(cliente.getId_Cliente());
+            String cuentasString = in.readUTF();
+            
+            String[] nombreCliente = cuentasString.split(",");            
+            System.out.println(nombreCliente[0] + nombreCliente[3]);
+            float montoTransferencia = Float.parseFloat(nombreCliente[2]);
+            float fondosCuenta = consultarCuenta(Integer.parseInt(nombreCliente[1]));
+            Cliente cliente = traerCuenta(Integer.parseInt(nombreCliente[1]));
+            if (fondosCuenta >= montoTransferencia) {
+                // Procesar la transferencia
 
-            int opcion = 0;
-            do {
-                // Enviar opciones al cliente
-                out.writeUTF("\nHola " + cliente.getNombre_Cliente() + ", su saldo actual es de: " + fondosCuenta + ", elige una opción:\n"
-                        + "1. Retiro\n"
-                        + "2. Depósito\n"
-                        + "3. Transferencia\n"
-                        + "4. Salir\n"
-                        + "Ingrese el número de la opción:");
+                // Actualizar saldo del destinatario
+                Cliente transfiereA = traerCuenta(Integer.parseInt(nombreCliente[3]));
+                
+                enviarTransferencia(transfiereA, montoTransferencia);
+                fondosCuenta -= montoTransferencia; // Actualizar saldo
+                actualizarSaldo(cliente, fondosCuenta);
+                out.writeUTF("Descontado," + montoTransferencia + "," + transfiereA.getNombre_Cliente() + "," + fondosCuenta);
 
-                // Leer la opción seleccionada por el cliente
-                String opcionStr = in.readUTF();
-                try {
-                    opcion = Integer.parseInt(opcionStr);
-                } catch (NumberFormatException e) {
-                    out.writeUTF("Opción no válida, por favor ingrese un número.");
-                    continue; // Volver al inicio del bucle
-                }
-
-                switch (opcion) {
-                    case 1:
-                        out.writeUTF("Has seleccionado: Retiro\nIngrese el monto a retirar:");
-                        float montoRetiro = Float.parseFloat(in.readUTF());
-
-                        if (fondosCuenta >= montoRetiro) {
-                            fondosCuenta -= montoRetiro; // Actualiza el saldo
-                            out.writeUTF("Has retirado: " + montoRetiro + ". Saldo actual: " + fondosCuenta);
-
-                            actualizarSaldo(cliente, fondosCuenta);
-                        } else {
-                            out.writeUTF("Saldo insuficiente. Saldo actual: " + fondosCuenta);
-                        }
-                        break;
-
-                    case 2:
-                        out.writeUTF("Has seleccionado: Depósito\nIngrese el monto a depositar:");
-                        float montoDeposito = Float.parseFloat(in.readUTF());
-                        fondosCuenta += montoDeposito; // Actualiza el saldo
-                        out.writeUTF("Has depositado: " + montoDeposito + ". Saldo actual: " + fondosCuenta);
-
-                        actualizarSaldo(cliente, fondosCuenta);
-                        break;
-
-                    case 3:
-                        out.writeUTF("Has seleccionado: Transferencia\nIngrese el monto a transferir:");
-                        float montoTransferencia = Float.parseFloat(in.readUTF()); // Recibir el monto
-
-                        // Enviar mensaje solicitando destinatario
-                        out.writeUTF("Ingrese el destinatario:");
-                        String destinatario = in.readUTF(); // Recibir el destinatario
-                        String numeroDestinatario = in.readUTF();
-                        if (fondosCuenta >= montoTransferencia) {
-                            // Procesar la transferencia
-
-                            // Actualizar saldo del destinatario
-                            Cliente transfiereA = traerCuenta(Integer.parseInt(numeroDestinatario));
-
-                            enviarTransferencia(transfiereA, montoTransferencia);
-                            fondosCuenta -= montoTransferencia; // Actualizar saldo
-                            actualizarSaldo(cliente, fondosCuenta);
-                            out.writeUTF("Has transferido " + montoTransferencia + " a " + transfiereA.getNombre_Cliente() + ". Saldo actual: " + fondosCuenta);
-
-                            // Confirmar transferencia
-                            out.writeUTF("Transferencia realizada con éxito.");
-                        } else {
-                            out.writeUTF("Saldo insuficiente para la transferencia. Saldo actual: " + fondosCuenta);
-                        }
-                        break;
-
-                    case 4:
-                        out.writeUTF("Gracias por usar el servicio, hasta luego.");
-                        socket.close();
-                        break;
-
-                    default:
-                        out.writeUTF("Opción no válida, por favor ingrese una opción válida.");
-                        break;
-                }
-
-            } while (opcion != 4);
-        } catch (IOException | NumberFormatException e) {
-            System.out.println("Error en el hilo: " + e.getMessage());
+                // Confirmar transferencia
+            } else {
+                // out.writeUTF("Saldo insuficiente para la transferencia. Saldo actual: " + fondosCuenta);
+            }
+        } catch (IOException ex) {
+            System.out.println(ex);
         }
     }
     
-    public void HomeBanking() {
+    public String VerificarCuenta(int idCuenta) {
+        Cliente cliente = traerCuenta(idCuenta);
+        if (cliente != null) {
+            return cliente.getNombre_Cliente();
+        }
+        return cliente.getNombre_Cliente();
+    }
+    
+    public void RetiroSaldo() {
         try {
-            out.writeUTF("Ingrese numero de cuenta de HomeBanking:");
-            nombreCliente = in.readUTF();
-            Cliente cliente = traerCuenta(Integer.parseInt(nombreCliente));
+            String cuentasString = in.readUTF();
+            
+            String[] nombreCliente = cuentasString.split(",");
+            Cliente cliente = traerCuenta(Integer.parseInt(nombreCliente[1]));
             // Obtener el saldo inicial de la cuenta
             float fondosCuenta = consultarCuenta(cliente.getId_Cliente());
+            
+            float montoRetiro = Float.parseFloat(nombreCliente[2]);
+            
+            if (fondosCuenta >= montoRetiro) {
+                fondosCuenta -= montoRetiro; // Actualiza el saldo 
+                actualizarSaldo(cliente, fondosCuenta);
+                out.writeUTF("Descontado," + fondosCuenta + "," + cliente.getNombre_Cliente());
+                
+            }
+        } catch (IOException ex) {
+            System.out.println(ex);
+            
+        }
+    }
 
-            int opcion = 0;
-            do {
-                // Enviar opciones al cliente
-                out.writeUTF("\nHola " + cliente.getNombre_Cliente() + ", su saldo actual es de: " + fondosCuenta + ", elige una opción:\n"
-                        + "1. Transferencia\n"
-                        + "4. Salir\n"
-                        + "Ingrese el número de la opción:");
-
-                // Leer la opción seleccionada por el cliente
-                String opcionStr = in.readUTF();
-                try {
-                    opcion = Integer.parseInt(opcionStr);
-                } catch (NumberFormatException e) {
-                    out.writeUTF("Opción no válida, por favor ingrese un número.");
-                    continue; // Volver al inicio del bucle
-                }
-
-                switch (opcion) {
-                    
-                    case 1:
-                        out.writeUTF("Has seleccionado: Transferencia\nIngrese el monto a transferir:");
-                        float montoTransferencia = Float.parseFloat(in.readUTF()); // Recibir el monto
-                        System.out.println("monto de tras" +montoTransferencia);
-                        // Enviar mensaje solicitando destinatario
-                        out.writeUTF("Ingrese el destinatario:");
-                    
-                        String numeroDestinatario = in.readUTF();
-                        System.out.println("el destinatario esss" + numeroDestinatario);
-                        if (fondosCuenta >= montoTransferencia) {
-                            // Procesar la transferencia
-
-                            // Actualizar saldo del destinatario
-                            Cliente transfiereA = traerCuenta(Integer.parseInt(numeroDestinatario));
-
-                            enviarTransferencia(transfiereA, montoTransferencia);
-                            fondosCuenta -= montoTransferencia; // Actualizar saldo
-                            actualizarSaldo(cliente, fondosCuenta);
-                            out.writeUTF("Has transferido " + montoTransferencia + " a " + transfiereA.getNombre_Cliente() + ". Saldo actual: " + fondosCuenta);
-
-                            // Confirmar transferencia
-                            out.writeUTF("Transferencia realizada con éxito.");
-                        } else {
-                            out.writeUTF("Saldo insuficiente para la transferencia. Saldo actual: " + fondosCuenta);
-                        }
-                        break;
-
-                    case 4:
-                        out.writeUTF("Gracias por usar el servicio, hasta luego.");
-                        socket.close();
-                        break;
-
-                    default:
-                        out.writeUTF("Opción no válida, por favor ingrese una opción válida.");
-                        break;
-                }
-
-            } while (opcion != 4);
-        } catch (IOException | NumberFormatException e) {
-            System.out.println("Error en el hilo: " + e.getMessage());
+    public void Cajero() {
+        try {
+            String cuentasString = in.readUTF();
+            
+            String[] nombreCliente = cuentasString.split(",");
+            if (nombreCliente[0].equals("Deposito")) {                
+                Cliente cliente = traerCuenta(Integer.parseInt(nombreCliente[1]));
+                float fondosCuenta = consultarCuenta(cliente.getId_Cliente());
+                float montoDeposito = Float.parseFloat(nombreCliente[2]);
+                fondosCuenta += montoDeposito; // Actualiza el saldo 
+                actualizarSaldo(cliente, fondosCuenta);
+                out.writeUTF(Float.toString(fondosCuenta));
+            } else if (nombreCliente[0].equals("Retiro")) {
+                RetiroSaldo();
+            } else {
+                Transferencia();
+            }
+            
+        } catch (IOException ex) {
+            System.out.println(ex);            
         }
     }
     
-    public void PostNet() {
-        try {
-            out.writeUTF("Ingrese numero de cuenta de su PostNet:");
-            nombreCliente = in.readUTF();
-            Cliente cliente = traerCuenta(Integer.parseInt(nombreCliente));
-            // Obtener el saldo inicial de la cuenta
-            float fondosCuenta = consultarCuenta(cliente.getId_Cliente());
-
-            int opcion = 0;
-            do {
-                // Enviar opciones al cliente
-                out.writeUTF("\nHola " + cliente.getNombre_Cliente() + ", su saldo actual es de: " + fondosCuenta + ", elige una opción:\n"
-                        + "1. Retiro\n" 
-                        + "4. Salir\n"
-                        + "Ingrese el número de la opción:");
-
-                // Leer la opción seleccionada por el cliente
-                String opcionStr = in.readUTF();
-                try {
-                    opcion = Integer.parseInt(opcionStr);
-                } catch (NumberFormatException e) {
-                    out.writeUTF("Opción no válida, por favor ingrese un número.");
-                    continue; // Volver al inicio del bucle
-                }
-
-                switch (opcion) {
-                    case 1:
-                        out.writeUTF("Has seleccionado: Retiro\nIngrese el monto a retirar:");
-                        float montoRetiro = Float.parseFloat(in.readUTF());
-
-                        if (fondosCuenta >= montoRetiro) {
-                            fondosCuenta -= montoRetiro; // Actualiza el saldo
-                            out.writeUTF("Has retirado: " + montoRetiro + ". Saldo actual: " + fondosCuenta);
-
-                            actualizarSaldo(cliente, fondosCuenta);
-                        } else {
-                            out.writeUTF("Saldo insuficiente. Saldo actual: " + fondosCuenta);
-                        }
-                        break;
-                    case 4:
-                        out.writeUTF("Gracias por usar el servicio, hasta luego.");
-                        socket.close();
-                        break;
-
-                    default:
-                        out.writeUTF("Opción no válida, por favor ingrese una opción válida.");
-                        break;
-                }
-
-            } while (opcion != 4);
-        } catch (IOException | NumberFormatException e) {
-            System.out.println("Error en el hilo: " + e.getMessage());
-        }
-    }
-
     @Override
-    public void run() { 
-            switch (Integer.parseInt(nombreCliente)) {
-                case 1:
-                    CajeroAutomatico();
+    public void run() {
+        try {
+            
+            String cuentasString = nombreCliente[1];
+            String idcuentaExistente = VerificarCuenta(Integer.parseInt(nombreCliente[1]));
+            out.writeUTF(idcuentaExistente);
+            switch (nombreCliente[0]) {
+                case "HomeBanking":
+                    Transferencia();
                     break;
-                case 2:
-                    HomeBanking();
+                case "PostNet":
+                    RetiroSaldo();
                     break;
-                case 3:
-                    PostNet();
+                case "CajeroAutomatico":
+                    Cajero();
                     break;
                 default:
                     System.out.println("");
                     break;
             }
-         
+            
+        } catch (IOException ex) {
+            System.out.println(ex);
+        }
     }
-
+    
     public float consultarCuenta(int id) {
         Conexion c = new Conexion();
         MySQLCuenta msq = new MySQLCuenta(c.conectar());
@@ -268,7 +143,7 @@ public class ServidorHilo extends Thread {
         System.out.println("Saldo actual de la cuenta: " + cuenta.getSaldo());
         return cuenta.getSaldo();
     }
-
+    
     public void actualizarSaldo(Cliente cliente, float retiro) {
         Conexion c = new Conexion();
         MySQLCuenta msq = new MySQLCuenta(c.conectar());
@@ -282,7 +157,7 @@ public class ServidorHilo extends Thread {
         System.out.println(cuenta.getId_Cliente() + cuenta.getSaldo() + cuenta.getId_Cliente());
         msq.modificar(cuenta);
     }
-
+    
     public void enviarTransferencia(Cliente cliente, float ingreso) {
         Conexion c = new Conexion();
         MySQLCuenta msq = new MySQLCuenta(c.conectar());
@@ -296,7 +171,7 @@ public class ServidorHilo extends Thread {
         System.out.println(cuenta.getId_Cliente() + cuenta.getSaldo() + cuenta.getId_Cliente());
         msq.modificar(cuenta);
     }
-
+    
     public Cliente traerCuenta(int id) {
         Conexion c = new Conexion();
         MySQLCliente msq = new MySQLCliente(c.conectar());
